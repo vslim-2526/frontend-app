@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiGet } from "../lib/api";
+import { apiGet, apiDelete, apiPut } from "../lib/api"; // ✅ Thêm apiDelete, apiPut
 import type { Expense, ExpensesResponse, StatisticsResponse } from "../lib/types";
 import { useNavigate } from "react-router-dom";
 
@@ -55,19 +55,17 @@ export default function Home() {
     fetchData();
   }, [monthStart, monthEnd]);
 
-  // Tính toán summary
+  // Tính toán summary - Chỉ tính expense
   const summary = useMemo(() => {
-    const totalIncome = expenses
-      .filter(e => e.type === "income")
-      .reduce((sum, e) => sum + (e.amount || 0), 0);
-    
     const totalExpenses = expenses
       .filter(e => e.type === "expense")
-      .reduce((sum, e) => sum + (e.amount || 0), 0);
+      .reduce((sum, e) => {
+        // ✅ Convert price sang number, đảm bảo là số hợp lệ
+        const price = Number(e.price) || 0;
+        return sum + price;
+      }, 0);
     
-    const balance = totalIncome - totalExpenses;
-
-    return { totalIncome, totalExpenses, balance };
+    return { totalExpenses };
   }, [expenses]);
 
   // Lấy transactions cho tháng hiện tại
@@ -85,7 +83,7 @@ export default function Home() {
       .sort((a, b) => {
         // Sort theo ngày, mới nhất trước
         return new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime();
-      });
+    });
   }, [expenses, currentDate]);
 
   // Function để format số tiền compact (k, tr) - loại bỏ .0
@@ -121,16 +119,27 @@ export default function Home() {
       totalExpense: number; 
     }> = [];
     
+    // Helper function để tính tổng expense cho một ngày
+    const calculateDayExpense = (dateStr: string): number => {
+      const dayExpenses = expenses.filter(e => {
+        if (e.type !== "expense") return false; // ✅ Chỉ tính expense
+        const expenseDate = new Date(e.paid_at).toISOString().split('T')[0];
+        return expenseDate === dateStr;
+      });
+      
+      return dayExpenses.reduce((sum, e) => {
+        // ✅ Convert price sang number trước khi cộng
+        const price = typeof e.price === 'string' ? parseFloat(e.price) : (e.price || 0);
+        return sum + (isNaN(price) ? 0 : price);
+      }, 0);
+    };
+    
     // Previous month days
     const prevMonthLastDay = new Date(year, month, 0).getDate();
     for (let i = startOffset - 1; i >= 0; i--) {
       const date = new Date(year, month - 1, prevMonthLastDay - i);
       const dateStr = date.toISOString().split('T')[0];
-      const dayExpenses = expenses.filter(e => {
-        const expenseDate = new Date(e.paid_at).toISOString().split('T')[0];
-        return expenseDate === dateStr && e.type === "expense";
-      });
-      const totalExpense = dayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+      const totalExpense = calculateDayExpense(dateStr); // ✅ Dùng helper function
       days.push({
         date,
         isCurrentMonth: false,
@@ -142,11 +151,7 @@ export default function Home() {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const dateStr = date.toISOString().split('T')[0];
-      const dayExpenses = expenses.filter(e => {
-        const expenseDate = new Date(e.paid_at).toISOString().split('T')[0];
-        return expenseDate === dateStr && e.type === "expense";
-      });
-      const totalExpense = dayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+      const totalExpense = calculateDayExpense(dateStr); // ✅ Dùng helper function
       days.push({
         date,
         isCurrentMonth: true,
@@ -159,11 +164,7 @@ export default function Home() {
     for (let day = 1; day <= remainingDays; day++) {
       const date = new Date(year, month + 1, day);
       const dateStr = date.toISOString().split('T')[0];
-      const dayExpenses = expenses.filter(e => {
-        const expenseDate = new Date(e.paid_at).toISOString().split('T')[0];
-        return expenseDate === dateStr && e.type === "expense";
-      });
-      const totalExpense = dayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+      const totalExpense = calculateDayExpense(dateStr); // ✅ Dùng helper function
       days.push({
         date,
         isCurrentMonth: false,
@@ -191,7 +192,9 @@ export default function Home() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString("vi-VN")} ₫`;
+    // ✅ Format với dấu phẩy, làm tròn số
+    const rounded = Math.round(amount);
+    return `${rounded.toLocaleString("en-US")} ₫`;
   };
 
   const formatDate = (date: Date) => {
@@ -206,6 +209,43 @@ export default function Home() {
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
     return `Tháng ${month}/${year}`;
+  };
+
+  // ✅ Thêm function xóa giao dịch
+  const handleDelete = async (transactionId: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa giao dịch này?")) {
+      return;
+    }
+
+    try {
+      await apiDelete("/v1/expense", {
+        deleted_ids: [transactionId]
+      });
+      
+      // Refresh data sau khi xóa
+      const paidAfter = monthStart.toISOString().split('T')[0];
+      const paidBefore = monthEnd.toISOString().split('T')[0];
+      
+      const expensesRes = await apiGet<ExpensesResponse>(
+        `/v1/expense/many?paid_after=${paidAfter}&paid_before=${paidBefore}`
+      );
+      setExpenses(expensesRes.result || []);
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      alert("Không thể xóa giao dịch. Vui lòng thử lại.");
+    }
+  };
+
+  // ✅ Thêm function sửa giao dịch
+  const handleEdit = (transaction: Expense) => {
+    navigate("/record", { 
+      state: { 
+        transaction: {
+          ...transaction,
+          amount: transaction.price, // Map price về amount cho form
+        }
+      } 
+    });
   };
 
   if (loading) {
@@ -237,32 +277,14 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Chỉ hiển thị Tổng chi tiêu */}
       <div className="summary-cards">
-        <div className="summary-card income-card">
-          <div className="card-icon income-icon">↑</div>
-          <div className="card-content">
-            <div className="card-title">Tổng thu nhập</div>
-            <div className="card-amount income-amount">{formatCurrency(summary.totalIncome)}</div>
-            <div className="card-subtitle">Tháng này</div>
-          </div>
-        </div>
-
         <div className="summary-card expense-card">
           <div className="card-icon expense-icon">↓</div>
           <div className="card-content">
             <div className="card-title">Tổng chi tiêu</div>
             <div className="card-amount expense-amount">{formatCurrency(summary.totalExpenses)}</div>
             <div className="card-subtitle">Tháng này</div>
-          </div>
-        </div>
-
-        <div className="summary-card balance-card">
-          <div className="card-icon balance-icon">⚖</div>
-          <div className="card-content">
-            <div className="card-title">Số dư</div>
-            <div className="card-amount balance-amount">{formatCurrency(summary.balance)}</div>
-            <div className="card-subtitle">Chênh lệch thu - chi</div>
           </div>
         </div>
       </div>
@@ -321,10 +343,27 @@ export default function Home() {
                     <div className="transaction-meta">
                       <span className="transaction-category">{transaction.category}</span>
                       <span className="transaction-date">{formatDate(new Date(transaction.paid_at))}</span>
+                      {/* ✅ Thêm buttons Sửa và Xóa bên phải ngày tháng */}
+                      <div className="transaction-actions">
+                        <button 
+                          className="transaction-action-btn edit-btn"
+                          onClick={() => handleEdit(transaction)}
+                          title="Sửa"
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          className="transaction-action-btn delete-btn"
+                          onClick={() => transaction._id && handleDelete(transaction._id)}
+                          title="Xóa"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className={`transaction-amount ${transaction.type === "income" ? "income" : "expense"}`}>
-                    {transaction.type === "income" ? "+" : "-"}{formatCurrency(transaction.amount)}
+                    {transaction.type === "income" ? "+" : "-"}{formatCurrency(transaction.price)}
                   </div>
                 </div>
               ))

@@ -53,20 +53,20 @@ export default function Chat() {
         role: "assistant", 
         content: "An error occurred while summarizing transactions. Please try again."
       };
-      setMessages((prev) => [...prev, botMsg]);
+    setMessages((prev) => [...prev, botMsg]);
     } finally {
       setLoading(false);
     }
-  }
+}
 
-  function generateBotReply(text: string): string {
-    const lower = text.toLowerCase();
-    if (/(ăn|uống|food|drink)/.test(lower)) return "Bạn đang nói về chi tiêu ăn uống. Bạn muốn ghi lại khoản này không?";
-    if (/(đi lại|taxi|grab|bus|transport)/.test(lower)) return "Chi tiêu đi lại có thể gộp theo tuần để dễ theo dõi.";
-    if (/(hóa đơn|hoá đơn|bill|electric|water|internet)/.test(lower)) return "Mẹo: Đặt nhắc lịch thanh toán hóa đơn để tránh trễ hạn.";
-    if (/(tiết kiệm|saving|budget)/.test(lower)) return "Gợi ý: Trích 20% thu nhập vào ví tiết kiệm mỗi tháng.";
-    if (/(xin chào|chào|hello|hi)/.test(lower)) return "Chào bạn! Mình có thể hỗ trợ theo dõi chi tiêu và thống kê.";
-    return "Mình đã nhận thông tin. Bạn có muốn tạo giao dịch mới hoặc xem thống kê không?";
+function generateBotReply(text: string): string {
+  const lower = text.toLowerCase();
+  if (/(ăn|uống|food|drink)/.test(lower)) return "Bạn đang nói về chi tiêu ăn uống. Bạn muốn ghi lại khoản này không?";
+  if (/(đi lại|taxi|grab|bus|transport)/.test(lower)) return "Chi tiêu đi lại có thể gộp theo tuần để dễ theo dõi.";
+  if (/(hóa đơn|hoá đơn|bill|electric|water|internet)/.test(lower)) return "Mẹo: Đặt nhắc lịch thanh toán hóa đơn để tránh trễ hạn.";
+  if (/(tiết kiệm|saving|budget)/.test(lower)) return "Gợi ý: Trích 20% thu nhập vào ví tiết kiệm mỗi tháng.";
+  if (/(xin chào|chào|hello|hi)/.test(lower)) return "Chào bạn! Mình có thể hỗ trợ theo dõi chi tiêu và thống kê.";
+  return "Mình đã nhận thông tin. Bạn có muốn tạo giao dịch mới hoặc xem thống kê không?";
   }
 
   return (

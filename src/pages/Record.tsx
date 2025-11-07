@@ -1,20 +1,30 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { apiPost } from "../lib/api";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { apiPost, apiPut } from "../lib/api";
 import type { Expense } from "../lib/types";
 
 export default function Record() {
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Lấy transaction từ state nếu có (khi edit)
+  const editingTransaction = location.state?.transaction as Expense | undefined;
+
   const [formData, setFormData] = useState({
-    description: "",
-    amount: 0,
-    paid_at: new Date().toISOString().split('T')[0],
-    category: "FOOD",
-    type: "income" as "expense" | "income",
+    description: editingTransaction?.description || "",
+    amount: editingTransaction?.amount || editingTransaction?.price || 0,
+    paid_at: editingTransaction?.paid_at 
+      ? new Date(editingTransaction.paid_at).toISOString().split('T')[0] 
+      : new Date().toISOString().split('T')[0],
+    category: editingTransaction?.category || "FOOD",
+    type: "expense" as "expense" | "income", // ✅ Mặc định là expense, không cho phép thay đổi
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // ✅ Thêm state để lưu giá trị hiển thị (có dấu phẩy)
+  const [displayAmount, setDisplayAmount] = useState("");
 
   const categories = [
     { value: "FOOD", label: "Food" },
@@ -26,16 +36,77 @@ export default function Record() {
     { value: "Other", label: "Other" },
   ];
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === "amount" ? parseFloat(value) || 0 : value,
-    }));
+  // ✅ Function format số với dấu phẩy
+  const formatNumberWithCommas = (value: string | number): string => {
+    // Bỏ tất cả ký tự không phải số
+    const numStr = value.toString().replace(/[^\d]/g, "");
+    if (!numStr) return "";
+    
+    // Convert sang number và format lại
+    const num = parseInt(numStr, 10);
+    if (isNaN(num)) return "";
+    
+    return num.toLocaleString("en-US");
   };
 
-  const handleTypeChange = (type: "expense" | "income") => {
-    setFormData(prev => ({ ...prev, type }));
+  // ✅ Function parse số từ string có dấu phẩy
+  const parseNumberFromFormatted = (value: string): number => {
+    const numStr = value.replace(/,/g, "");
+    return parseFloat(numStr) || 0;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === "amount") {
+      // ✅ Format số tiền với dấu phẩy khi nhập
+      const formatted = formatNumberWithCommas(value);
+      setDisplayAmount(formatted);
+      
+      // Lưu giá trị số thực vào formData
+      const numericValue = parseNumberFromFormatted(formatted);
+      setFormData(prev => ({
+        ...prev,
+        [name]: numericValue,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  // ✅ Sync displayAmount khi editingTransaction thay đổi
+  useEffect(() => {
+    if (editingTransaction) {
+      const amount = editingTransaction.amount || editingTransaction.price || 0;
+      setDisplayAmount(formatNumberWithCommas(amount));
+    } else {
+      setDisplayAmount("");
+    }
+  }, [editingTransaction]);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    
+    // ✅ Chỉ cho phép số và dấu phẩy
+    value = value.replace(/[^\d,]/g, "");
+    
+    // ✅ Format với dấu phẩy
+    const numStr = value.replace(/,/g, "");
+    if (numStr === "") {
+      setDisplayAmount("");
+      setFormData(prev => ({ ...prev, amount: 0 }));
+      return;
+    }
+    
+    const num = parseInt(numStr, 10);
+    if (!isNaN(num)) {
+      const formatted = num.toLocaleString("en-US");
+      setDisplayAmount(formatted);
+      setFormData(prev => ({ ...prev, amount: num }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,37 +116,51 @@ export default function Record() {
     setSuccess(false);
 
     try {
-      // TODO: Lấy user_id từ context/auth, tạm thời hardcode
-      const user_id = "65f1234567890abcdef12345"; // Thay bằng user_id thực tế
+      const user_id = "65f1234567890abcdef12345";
 
-      const expenseData: Expense = {
+      const expenseData = {
         user_id,
-        type: formData.type,
+        type: "expense", // ✅ Luôn là expense
         description: formData.description,
-        amount: formData.amount,
+        price: Number(formData.amount) || 0,
         category: formData.category,
         paid_at: new Date(formData.paid_at).toISOString(),
       };
 
-      await apiPost("/v1/expense", [expenseData]);
-      
-      setSuccess(true);
-      // Reset form sau 2 giây
-      setTimeout(() => {
-        setFormData({
-          description: "",
-          amount: 0,
-          paid_at: new Date().toISOString().split('T')[0],
-          category: "FOOD",
-          type: "income",
-        });
-        setSuccess(false);
-        // Optionally navigate to home
-        // navigate("/");
-      }, 2000);
+      if (expenseData.price <= 0) {
+        setError("Số tiền phải lớn hơn 0");
+        setLoading(false);
+        return;
+      }
+
+      if (editingTransaction?._id) {
+        await apiPut("/v1/expense", [{
+          ...expenseData,
+          _id: editingTransaction._id,
+          created_at: editingTransaction.created_at,
+        }]);
+        setSuccess(true);
+        setTimeout(() => {
+          navigate("/");
+        }, 1500);
+      } else {
+        await apiPost("/v1/expense", [expenseData]);
+        setSuccess(true);
+        setTimeout(() => {
+          setFormData({
+            description: "",
+            amount: 0,
+            paid_at: new Date().toISOString().split('T')[0],
+            category: "FOOD",
+            type: "expense", // ✅ Luôn là expense
+          });
+          setSuccess(false);
+        }, 2000);
+      }
     } catch (err) {
-      console.error("Error creating expense:", err);
-      setError(err instanceof Error ? err.message : "Có lỗi xảy ra khi thêm giao dịch");
+      console.error("Error creating/updating expense:", err);
+      const errorMessage = err instanceof Error ? err.message : "Có lỗi xảy ra khi thêm giao dịch";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -124,9 +209,11 @@ export default function Record() {
       {/* Form Section */}
       <div className="record-form-container">
         <div className="record-form-card">
-          <h2 className="record-form-title">Ghi chép giao dịch mới</h2>
+          <h2 className="record-form-title">
+            {editingTransaction ? "Sửa giao dịch" : "Ghi chép giao dịch mới"}
+          </h2>
           <p className="record-form-subtitle">
-            Thêm một khoản thu nhập hoặc chi tiêu mới vào sổ của bạn.
+            Thêm một khoản chi tiêu mới vào sổ của bạn. {/* ✅ Đổi text */}
           </p>
 
           <form onSubmit={handleSubmit} className="record-form">
@@ -149,14 +236,14 @@ export default function Record() {
             <div className="form-group">
               <label htmlFor="amount" className="form-label">Số tiền</label>
               <input
-                type="number"
+                type="text"
                 id="amount"
                 name="amount"
-                value={formData.amount}
-                onChange={handleChange}
-                min="0"
-                step="0.01"
+                value={displayAmount}
+                onChange={handleAmountChange}
+                placeholder="0"
                 className="form-input"
+                inputMode="numeric"
                 required
               />
             </div>
@@ -202,34 +289,7 @@ export default function Record() {
               </div>
             </div>
 
-            {/* Loại giao dịch */}
-            <div className="form-group">
-              <label className="form-label">Loại giao dịch</label>
-              <div className="form-radio-group">
-                <label className={`form-radio ${formData.type === "income" ? "active" : ""}`}>
-                  <input
-                    type="radio"
-                    name="type"
-                    value="income"
-                    checked={formData.type === "income"}
-                    onChange={() => handleTypeChange("income")}
-                    className="form-radio-input"
-                  />
-                  <span className="form-radio-label">Thu nhập</span>
-                </label>
-                <label className={`form-radio ${formData.type === "expense" ? "active" : ""}`}>
-                  <input
-                    type="radio"
-                    name="type"
-                    value="expense"
-                    checked={formData.type === "expense"}
-                    onChange={() => handleTypeChange("expense")}
-                    className="form-radio-input"
-                  />
-                  <span className="form-radio-label">Chi tiêu</span>
-                </label>
-              </div>
-            </div>
+            {/* ✅ BỎ phần "Loại giao dịch" - không cần radio buttons nữa */}
 
             {/* Error Message */}
             {error && (
