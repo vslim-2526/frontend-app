@@ -116,7 +116,8 @@ export default function Record() {
     setSuccess(false);
 
     try {
-      const user_id = "65f1234567890abcdef12345";
+      // ✅ Thay đổi user_id thành user_id hợp lệ từ AWS backend
+      const user_id = "68b3d1ae0be9bb8228499d9f"; // User ID từ Postman collection
 
       const expenseData = {
         user_id,

@@ -239,8 +239,9 @@
   border-color: #999;
 }
 
+# chỉnh ngày
 .calendar-day-number {
-  font-size: 14px;
+  font-size: 26px;
   font-weight: 600;
   color: #1a1a1a;
   margin-top: 2px;
@@ -252,9 +253,9 @@
 }
 
 .calendar-day-amount {
-  font-size: 11px;
+  font-size: 18px;
   font-weight: 500;
-  color: #1a1a1a;
+  color: #ee1414;
   margin-top: auto;
   text-align: center;
   width: 100%;
@@ -267,6 +268,11 @@
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* ✅ Chiếm full height của container */
+  max-height: 600px; /* ✅ Giới hạn chiều cao tối đa */
+  overflow: hidden; /* ✅ Ẩn overflow của section */
 }
 
 .transactions-header {
@@ -274,12 +280,43 @@
   font-weight: 600;
   color: #1a1a1a;
   margin: 0 0 20px 0;
+  flex-shrink: 0; /* ✅ Header không bị co lại */
 }
 
 .transactions-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow-y: auto; /* ✅ Thêm scroll dọc */
+  overflow-x: hidden; /* ✅ Ẩn scroll ngang */
+  flex: 1; /* ✅ Chiếm không gian còn lại */
+  padding-right: 4px; /* ✅ Tạo khoảng trống cho scrollbar */
+  min-height: 0; /* ✅ Quan trọng để scroll hoạt động */
+}
+
+/* ✅ Custom scrollbar styling */
+.transactions-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.transactions-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.transactions-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.transactions-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* ✅ Firefox scrollbar */
+.transactions-list {
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f1f1f1;
 }
 
 .transaction-item {

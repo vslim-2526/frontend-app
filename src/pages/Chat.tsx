@@ -27,22 +27,16 @@ export default function Chat() {
     setLoading(true);
 
     try {
-      // TODO: Uncomment khi backend đã có API
-      // const response = await apiPost<{ response: string }>("/v1/chat", {
-      //   utterance: trimmed,
-      // });
-      // const botMsg: Message = { 
-      //   id: crypto.randomUUID(), 
-      //   role: "assistant", 
-      //   content: response.response || "An error occurred while summarizing transactions. Please try again."
-      // };
-
-      // Tạm thời dùng mock reply
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+      // ✅ Uncomment và sửa để gọi API thật
+      const user_id = "68b3d1ae0be9bb8228499d9f"; // User ID từ Postman collection
+      const response = await apiPost<{ response: string }>(`/v1/chat?user_id=${user_id}`, {
+        utterance: trimmed,
+      });
+      
       const botMsg: Message = { 
         id: crypto.randomUUID(), 
         role: "assistant", 
-        content: generateBotReply(trimmed)
+        content: response.response || "Xin lỗi, tôi không thể trả lời câu hỏi này."
       };
       
       setMessages((prev) => [...prev, botMsg]);
@@ -51,23 +45,16 @@ export default function Chat() {
       const botMsg: Message = { 
         id: crypto.randomUUID(), 
         role: "assistant", 
-        content: "An error occurred while summarizing transactions. Please try again."
+        content: "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại."
       };
-    setMessages((prev) => [...prev, botMsg]);
+      setMessages((prev) => [...prev, botMsg]);
     } finally {
       setLoading(false);
     }
-}
-
-function generateBotReply(text: string): string {
-  const lower = text.toLowerCase();
-  if (/(ăn|uống|food|drink)/.test(lower)) return "Bạn đang nói về chi tiêu ăn uống. Bạn muốn ghi lại khoản này không?";
-  if (/(đi lại|taxi|grab|bus|transport)/.test(lower)) return "Chi tiêu đi lại có thể gộp theo tuần để dễ theo dõi.";
-  if (/(hóa đơn|hoá đơn|bill|electric|water|internet)/.test(lower)) return "Mẹo: Đặt nhắc lịch thanh toán hóa đơn để tránh trễ hạn.";
-  if (/(tiết kiệm|saving|budget)/.test(lower)) return "Gợi ý: Trích 20% thu nhập vào ví tiết kiệm mỗi tháng.";
-  if (/(xin chào|chào|hello|hi)/.test(lower)) return "Chào bạn! Mình có thể hỗ trợ theo dõi chi tiêu và thống kê.";
-  return "Mình đã nhận thông tin. Bạn có muốn tạo giao dịch mới hoặc xem thống kê không?";
   }
+
+  // ✅ Xóa function generateBotReply vì không cần nữa
+  // function generateBotReply(text: string): string { ... }
 
   return (
     <div className="home-page">
