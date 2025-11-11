@@ -9,6 +9,10 @@ export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [statistics, setStatistics] = useState<StatisticsResponse>({});
   const [loading, setLoading] = useState(true);
+  
+  // ✅ State để quản lý popup
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   // Tính toán tháng hiện tại (start và end)
   const monthStart = useMemo(() => {
@@ -81,9 +85,17 @@ export default function Home() {
         return expenseDate >= monthStart && expenseDate <= monthEnd;
       })
       .sort((a, b) => {
-        // Sort theo ngày, mới nhất trước
-        return new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime();
-    });
+        // ✅ Sort theo created_at (mới nhất trước), fallback về paid_at nếu không có created_at
+        const aTime = a.created_at 
+          ? new Date(a.created_at).getTime() 
+          : new Date(a.paid_at).getTime();
+        const bTime = b.created_at 
+          ? new Date(b.created_at).getTime() 
+          : new Date(b.paid_at).getTime();
+        
+        // Mới nhất trước (descending)
+        return bTime - aTime;
+      });
   }, [expenses, currentDate]);
 
   // Function để format số tiền compact (k, tr) - loại bỏ .0
@@ -119,16 +131,25 @@ export default function Home() {
       totalExpense: number; 
     }> = [];
     
-    // Helper function để tính tổng expense cho một ngày
+    // ✅ Helper function để format date thành YYYY-MM-DD theo local timezone
+    const formatLocalDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    // ✅ Helper function để tính tổng expense cho một ngày (dùng local date)
     const calculateDayExpense = (dateStr: string): number => {
       const dayExpenses = expenses.filter(e => {
-        if (e.type !== "expense") return false; // ✅ Chỉ tính expense
-        const expenseDate = new Date(e.paid_at).toISOString().split('T')[0];
-        return expenseDate === dateStr;
+        if (e.type !== "expense") return false;
+        // ✅ Convert paid_at sang local date string (không dùng UTC)
+        const expenseDate = new Date(e.paid_at);
+        const expenseDateStr = formatLocalDate(expenseDate);
+        return expenseDateStr === dateStr;
       });
       
       return dayExpenses.reduce((sum, e) => {
-        // ✅ Convert price sang number trước khi cộng
         const price = typeof e.price === 'string' ? parseFloat(e.price) : (e.price || 0);
         return sum + (isNaN(price) ? 0 : price);
       }, 0);
@@ -138,8 +159,8 @@ export default function Home() {
     const prevMonthLastDay = new Date(year, month, 0).getDate();
     for (let i = startOffset - 1; i >= 0; i--) {
       const date = new Date(year, month - 1, prevMonthLastDay - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const totalExpense = calculateDayExpense(dateStr); // ✅ Dùng helper function
+      const dateStr = formatLocalDate(date); // ✅ Dùng local date
+      const totalExpense = calculateDayExpense(dateStr);
       days.push({
         date,
         isCurrentMonth: false,
@@ -150,8 +171,8 @@ export default function Home() {
     // Current month days
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
-      const dateStr = date.toISOString().split('T')[0];
-      const totalExpense = calculateDayExpense(dateStr); // ✅ Dùng helper function
+      const dateStr = formatLocalDate(date); // ✅ Dùng local date
+      const totalExpense = calculateDayExpense(dateStr);
       days.push({
         date,
         isCurrentMonth: true,
@@ -163,8 +184,8 @@ export default function Home() {
     const remainingDays = 42 - days.length;
     for (let day = 1; day <= remainingDays; day++) {
       const date = new Date(year, month + 1, day);
-      const dateStr = date.toISOString().split('T')[0];
-      const totalExpense = calculateDayExpense(dateStr); // ✅ Dùng helper function
+      const dateStr = formatLocalDate(date); // ✅ Dùng local date
+      const totalExpense = calculateDayExpense(dateStr);
       days.push({
         date,
         isCurrentMonth: false,
@@ -174,6 +195,57 @@ export default function Home() {
     
     return days;
   }, [currentDate, expenses]);
+
+  // ✅ Helper function để format date thành YYYY-MM-DD theo local timezone
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // ✅ Lấy giao dịch cho ngày được chọn
+  const dayTransactions = useMemo(() => {
+    if (!selectedDate) return [];
+    
+    const dateStr = formatLocalDate(selectedDate);
+    
+    return expenses
+      .filter(expense => {
+        const expenseDate = new Date(expense.paid_at);
+        const expenseDateStr = formatLocalDate(expenseDate);
+        return expenseDateStr === dateStr;
+      })
+      .sort((a, b) => {
+        // Sort theo created_at (mới nhất trước)
+        const aTime = a.created_at 
+          ? new Date(a.created_at).getTime() 
+          : new Date(a.paid_at).getTime();
+        const bTime = b.created_at 
+          ? new Date(b.created_at).getTime() 
+          : new Date(b.paid_at).getTime();
+        return bTime - aTime;
+      });
+  }, [expenses, selectedDate]);
+
+  // ✅ Tính tổng chi tiêu cho ngày được chọn
+  const dayTotalExpense = useMemo(() => {
+    return dayTransactions
+      .filter(e => e.type === "expense")
+      .reduce((sum, e) => sum + (Number(e.price) || 0), 0);
+  }, [dayTransactions]);
+
+  // ✅ Function để mở popup khi click vào ô lịch
+  const handleDayClick = (date: Date) => {
+    setSelectedDate(date);
+    setShowModal(true);
+  };
+
+  // ✅ Function để đóng popup
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedDate(null);
+  };
 
   const monthNames = [
     "Tháng Một", "Tháng Hai", "Tháng Ba", "Tháng Tư", "Tháng Năm", "Tháng Sáu",
@@ -316,7 +388,7 @@ export default function Home() {
               <div
                 key={idx}
                 className={`calendar-day ${!day.isCurrentMonth ? 'other-month' : ''} ${day.totalExpense > 0 ? 'has-expense' : ''}`}
-                onClick={() => setCurrentDate(day.date)}
+                onClick={() => handleDayClick(day.date)} // ✅ Đổi từ setCurrentDate sang handleDayClick
               >
                 <div className="calendar-day-number">{day.date.getDate()}</div>
                 {day.totalExpense > 0 && day.isCurrentMonth && (
@@ -371,6 +443,76 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ✅ Modal/Popup hiển thị giao dịch trong ngày */}
+      {showModal && selectedDate && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">
+                Giao dịch ngày {formatDate(selectedDate)}
+              </h3>
+              <button className="modal-close-btn" onClick={handleCloseModal}>
+                ✕
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {dayTransactions.length === 0 ? (
+                <div className="no-transactions">Không có giao dịch nào trong ngày này</div>
+              ) : (
+                <>
+                  {dayTotalExpense > 0 && (
+                    <div className="modal-summary">
+                      <span className="modal-summary-label">Tổng chi tiêu:</span>
+                      <span className="modal-summary-amount">{formatCurrency(dayTotalExpense)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="modal-transactions-list">
+                    {dayTransactions.map((transaction) => (
+                      <div key={transaction._id || `transaction-${transaction.paid_at}`} className="modal-transaction-item">
+                        <div className="modal-transaction-info">
+                          <div className="modal-transaction-name">{transaction.description}</div>
+                          <div className="modal-transaction-meta">
+                            <span className="modal-transaction-category">{transaction.category}</span>
+                            <div className="modal-transaction-actions">
+                              <button 
+                                className="modal-transaction-action-btn edit-btn"
+                                onClick={() => {
+                                  handleEdit(transaction);
+                                  handleCloseModal();
+                                }}
+                                title="Sửa"
+                              >
+                                ✏️
+                              </button>
+                              <button 
+                                className="modal-transaction-action-btn delete-btn"
+                                onClick={() => {
+                                  if (transaction._id) {
+                                    handleDelete(transaction._id);
+                                  }
+                                }}
+                                title="Xóa"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className={`modal-transaction-amount ${transaction.type === "income" ? "income" : "expense"}`}>
+                          {transaction.type === "income" ? "+" : "-"}{formatCurrency(transaction.price)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
