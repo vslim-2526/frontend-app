@@ -3,6 +3,16 @@ import { apiGet, apiDelete, apiPut } from "../lib/api"; // ✅ Thêm apiDelete, 
 import type { Expense, ExpensesResponse, StatisticsResponse } from "../lib/types";
 import { useNavigate } from "react-router-dom";
 
+// ✅ Thêm CATEGORIES constant để map category value sang label
+const CATEGORIES = [
+  { value: "FOOD", label: "Ăn uống" },
+  { value: "APPLIANCES", label: "Mua sắm" },
+  { value: "TRANSPORT", label: "Giao thông" },
+  { value: "HEALTH", label: "Sức khỏe" },
+  { value: "BILLS", label: "Hóa đơn" },
+  { value: "none", label: "Khác" },
+];
+
 export default function Home() {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -247,6 +257,12 @@ export default function Home() {
     setSelectedDate(null);
   };
 
+  // ✅ Function để get category label từ value
+  const getCategoryLabel = (category: string) => {
+    const cat = CATEGORIES.find(c => c.value === category);
+    return cat ? cat.label : category;
+  };
+
   const monthNames = [
     "Tháng Một", "Tháng Hai", "Tháng Ba", "Tháng Tư", "Tháng Năm", "Tháng Sáu",
     "Tháng Bảy", "Tháng Tám", "Tháng Chín", "Tháng Mười", "Tháng Mười Một", "Tháng Mười Hai"
@@ -413,7 +429,9 @@ export default function Home() {
                   <div className="transaction-info">
                     <div className="transaction-name">{transaction.description}</div>
                     <div className="transaction-meta">
-                      <span className="transaction-category">{transaction.category}</span>
+                      <span className="transaction-category">
+                        {getCategoryLabel(transaction.category || "none")}
+                      </span>
                       <span className="transaction-date">{formatDate(new Date(transaction.paid_at))}</span>
                       {/* ✅ Thêm buttons Sửa và Xóa bên phải ngày tháng */}
                       <div className="transaction-actions">
@@ -475,7 +493,9 @@ export default function Home() {
                         <div className="modal-transaction-info">
                           <div className="modal-transaction-name">{transaction.description}</div>
                           <div className="modal-transaction-meta">
-                            <span className="modal-transaction-category">{transaction.category}</span>
+                            <span className="modal-transaction-category">
+                              {getCategoryLabel(transaction.category || "none")}
+                            </span>
                             <div className="modal-transaction-actions">
                               <button 
                                 className="modal-transaction-action-btn edit-btn"
