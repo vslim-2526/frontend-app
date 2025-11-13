@@ -247,17 +247,50 @@ export default function Chat() {
       );
     }
     if (ret.stat_expense && typeof ret.stat_expense === "object") {
-      const { total_expense, total_income } = ret.stat_expense;
-      if (total_expense != null) {
-        parts.push(`Tổng chi tiêu: ${formatCurrency(Number(total_expense))}.`);
-      }
-      if (total_income != null) {
-        parts.push(`Tổng thu nhập: ${formatCurrency(Number(total_income))}.`);
+      // ✅ Backend trả về format: { "FOOD": { totalPrice: 50000, count: 1 }, ... }
+      // Tính tổng từ tất cả các category
+      let totalAmount = 0;
+      let totalCount = 0;
+      const categoryDetails: string[] = [];
+
+      Object.entries(ret.stat_expense).forEach(([category, data]: [string, any]) => {
+        if (data && typeof data === "object") {
+          // ✅ Backend trả về totalPrice, không phải totalAmount
+          const price = Number(data.totalPrice ?? data.totalAmount ?? 0) || 0;
+          const count = Number(data.count) || 0;
+          totalAmount += price;
+          totalCount += count;
+
+          // Lấy label cho category
+          const categoryInfo = CATEGORIES.find(c => c.value === category);
+          const categoryLabel = categoryInfo ? categoryInfo.label : category;
+          
+          if (price > 0) {
+            categoryDetails.push(
+              `${categoryLabel}: ${formatCurrency(price)} (${count} giao dịch)`
+            );
+          }
+        }
+      });
+
+      // Hiển thị tổng
+      if (totalAmount > 0) {
+        parts.push(`Tổng chi tiêu: ${formatCurrency(totalAmount)} (${totalCount} giao dịch).`);
+        
+        // Hiển thị chi tiết theo category nếu có nhiều hơn 1 category
+        if (categoryDetails.length > 1) {
+          parts.push(` Chi tiết: ${categoryDetails.join(", ")}.`);
+        }
+      } else {
+        // ✅ Nếu không có dữ liệu (object rỗng hoặc totalAmount = 0)
+        parts.push("Không có giao dịch nào trong khoảng thời gian này.");
       }
     }
 
-    return parts.join(" ") || "Đã xử lý yêu cầu của bạn.";
+    return parts.join(" ").trim();
   };
+
+  // ✅ Xóa hàm parseDateRange - không cần parse ngày tháng ở frontend nữa
 
   const handleCategoryChange = async (
     expenseId: string,
@@ -322,15 +355,23 @@ export default function Chat() {
         { utterance: trimmed }
       );
 
+      // ✅ Debug: log toàn bộ response để xem backend trả về gì
+      console.log("Chat response:", response);
+//lag phết
+      const summaryParts: string[] = [];
       let summary = "Đã xử lý yêu cầu của bạn.";
       let transactions: ChatExpense[] = [];
 
       if (response.message) {
-        summary = response.message;
-      } else if (response.ret) {
-        summary = buildSummaryFromRet(response.ret);
+        summaryParts.push(response.message);
+      }
 
-        // Giao dịch mới thêm
+      if (response.ret) {
+        const retSummary = buildSummaryFromRet(response.ret);
+        if (retSummary) {
+          summaryParts.push(retSummary);
+        }
+
         const insertedIds = [
           ...toArray(response.ret.add_expense?.insertedIds),
           ...toArray(response.ret.add_expense?.inserted_id),
@@ -344,8 +385,10 @@ export default function Chat() {
           transactions = await fetchRecentExpenses(frame?.description, frame?.count ?? 1);
         }
 
-        // Kết quả tìm kiếm
-        if (Array.isArray(response.ret.search_expense) && response.ret.search_expense.length) {
+        if (
+          Array.isArray(response.ret.search_expense) &&
+          response.ret.search_expense.length
+        ) {
           transactions = response.ret.search_expense.map((exp: any) => ({
             _id: exp._id?.toString() ?? exp._id,
             user_id: exp.user_id,
@@ -360,7 +403,7 @@ export default function Chat() {
           }));
         }
       } else if (response.doableFrames) {
-        summary = buildSummaryFromRet({
+        const frameSummary = buildSummaryFromRet({
           add_expense: response.doableFrames.find((f) => f.intent === "add_expense"),
           delete_expense: null,
           update_expense: null,
@@ -369,7 +412,12 @@ export default function Chat() {
             : null,
           stat_expense: null,
         });
+        if (frameSummary) {
+          summaryParts.push(frameSummary);
+        }
       }
+
+      summary = summaryParts.join(" ").trim() || summary;
 
       setMessages((prev) => [
         ...prev,

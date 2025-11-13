@@ -95,16 +95,28 @@ export default function Home() {
         return expenseDate >= monthStart && expenseDate <= monthEnd;
       })
       .sort((a, b) => {
-        // ✅ Sort theo created_at (mới nhất trước), fallback về paid_at nếu không có created_at
-        const aTime = a.created_at 
-          ? new Date(a.created_at).getTime() 
-          : new Date(a.paid_at).getTime();
-        const bTime = b.created_at 
-          ? new Date(b.created_at).getTime() 
-          : new Date(b.paid_at).getTime();
+        // ✅ Sắp xếp theo ngày (paid_at) - ngày mới nhất trước
+        const aPaidDate = new Date(a.paid_at);
+        const bPaidDate = new Date(b.paid_at);
         
-        // Mới nhất trước (descending)
-        return bTime - aTime;
+        // So sánh ngày (chỉ lấy YYYY-MM-DD, bỏ qua giờ phút giây)
+        const aDateStr = `${aPaidDate.getFullYear()}-${String(aPaidDate.getMonth() + 1).padStart(2, '0')}-${String(aPaidDate.getDate()).padStart(2, '0')}`;
+        const bDateStr = `${bPaidDate.getFullYear()}-${String(bPaidDate.getMonth() + 1).padStart(2, '0')}-${String(bPaidDate.getDate()).padStart(2, '0')}`;
+        
+        // Nếu khác ngày, sắp xếp theo ngày (mới nhất trước)
+        if (aDateStr !== bDateStr) {
+          return bPaidDate.getTime() - aPaidDate.getTime();
+        }
+        
+        // Nếu cùng ngày, sắp xếp theo created_at (mới nhất trước)
+        const aCreatedTime = a.created_at 
+          ? new Date(a.created_at).getTime() 
+          : 0;
+        const bCreatedTime = b.created_at 
+          ? new Date(b.created_at).getTime() 
+          : 0;
+        
+        return bCreatedTime - aCreatedTime;
       });
   }, [expenses, currentDate]);
 
