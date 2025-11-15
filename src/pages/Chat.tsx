@@ -354,7 +354,23 @@ export default function Chat() {
         `/v1/chat?user_id=${USER_ID}`,
         { utterance: trimmed }
       );
-
+      // trong handleSend, ngay sau khi nhận response
+      console.log("Chat raw response:", response);
+      if (response.doableFrames?.length) {
+        console.log(
+          "Parsed frames:",
+          response.doableFrames.map((f) => ({
+            intent: f.intent,
+            description: f.description,
+            date: f.date instanceof Date ? f.date.toISOString() : f.date,
+            condition_date: f.condition_date instanceof Date ? f.condition_date.toISOString() : f.condition_date,
+          }))
+        );
+      }
+      if (response.ret?.search_expense) {
+        console.log("ret.search_expense:", response.ret.search_expense);
+      }
+      
       // ✅ Debug: log toàn bộ response để xem backend trả về gì
       console.log("Chat response:", response);
 //lag phết
@@ -401,6 +417,41 @@ export default function Chat() {
             created_at: exp.created_at,
             modified_at: exp.modified_at,
           }));
+        }
+
+        if (
+          (!transactions || transactions.length === 0) &&
+          response.ret.update_expense?.modifiedCount
+        ) {
+          const updateFrames =
+            response.doableFrames?.filter((f: any) => f.intent === "update_expense") ?? [];
+
+          const candidateIds = updateFrames
+            .map((frame: any) => frame._id)
+            .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
+
+          let updated: ChatExpense[] = [];
+
+          if (candidateIds.length > 0) {
+            updated = await fetchExpensesByIds([...new Set(candidateIds)]);
+          }
+
+          if (updated.length === 0 && updateFrames.length > 0) {
+            const fallbackFrame = updateFrames[updateFrames.length - 1];
+            const hintDescription =
+              fallbackFrame.target_description ||
+              fallbackFrame.description ||
+              undefined;
+
+            updated = await fetchRecentExpenses(
+              hintDescription,
+              response.ret.update_expense.modifiedCount ?? 1
+            );
+          }
+
+          if (updated.length > 0) {
+            transactions = updated;
+          }
         }
       } else if (response.doableFrames) {
         const frameSummary = buildSummaryFromRet({
