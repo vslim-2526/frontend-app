@@ -19,7 +19,6 @@ type ChatExpense = {
   type?: "expense" | "income";
   description: string;
   price: number;
-  amount?: number;
   category?: string;
   paid_at: string;
   created_at?: string;
@@ -94,8 +93,7 @@ export default function Chat() {
             ? msg.transactions.map((exp: any) => ({
                 _id: exp._id,
                 description: exp.description,
-                price: Number(exp.price ?? exp.amount ?? 0),
-                amount: Number(exp.amount ?? exp.price ?? 0),
+                price: Number(exp.price ?? 0),
                 category: exp.category,
                 paid_at: exp.paid_at,
                 created_at: exp.created_at,
@@ -175,8 +173,7 @@ export default function Chat() {
           user_id: expense.user_id,
           type: expense.type ?? "expense",
           description: expense.description,
-          price: Number(expense.price ?? expense.amount ?? 0),
-          amount: Number(expense.amount ?? expense.price ?? 0),
+          price: Number(expense.price ?? 0),
           category: expense.category ?? "none",
           paid_at: expense.paid_at,
           created_at: expense.created_at,
@@ -213,8 +210,7 @@ export default function Chat() {
           user_id: exp.user_id,
           type: exp.type ?? "expense",
           description: exp.description,
-          price: Number(exp.price ?? exp.amount ?? 0),
-          amount: Number(exp.amount ?? exp.price ?? 0),
+          price: Number(exp.price ?? 0),
           category: exp.category ?? "none",
           paid_at: exp.paid_at,
           created_at: exp.created_at,
@@ -306,7 +302,7 @@ export default function Chat() {
           user_id: expense.user_id ?? USER_ID,
           type: expense.type ?? "expense",
           description: expense.description,
-          price: Number(expense.price ?? expense.amount ?? 0),
+          price: Number(expense.price ?? 0),
           category: newCategory,
           paid_at: expense.paid_at,
           created_at: expense.created_at,
@@ -410,8 +406,7 @@ export default function Chat() {
             user_id: exp.user_id,
             type: exp.type ?? "expense",
             description: exp.description,
-            price: Number(exp.price ?? exp.amount ?? 0),
-            amount: Number(exp.amount ?? exp.price ?? 0),
+            price: Number(exp.price ?? 0),
             category: exp.category ?? "none",
             paid_at: exp.paid_at,
             created_at: exp.created_at,
@@ -568,7 +563,7 @@ export default function Chat() {
                             <div className="chat-transaction-card-header-inline">
                               <div className="chat-transaction-name-inline">{transaction.description}</div>
                               <div className="chat-transaction-amount-inline">
-                                -{formatCurrency(transaction.price ?? transaction.amount ?? 0)}
+                                -{formatCurrency(transaction.price ?? 0)}
                               </div>
                             </div>
 

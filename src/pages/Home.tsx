@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiGet, apiDelete, apiPut } from "../lib/api"; // ✅ Thêm apiDelete, apiPut
-import type { Expense, ExpensesResponse, StatisticsResponse } from "../lib/types";
+import { apiGet, apiDelete} from "../lib/api"; // ✅ Thêm apiDelete, apiPut
+import type { Expense, ExpensesResponse } from "../lib/types";
 import { useNavigate } from "react-router-dom";
 
 // ✅ Thêm CATEGORIES constant để map category value sang label
@@ -17,7 +17,6 @@ export default function Home() {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [statistics, setStatistics] = useState<StatisticsResponse>({});
   const [loading, setLoading] = useState(true);
   
   // ✅ State để quản lý popup
@@ -52,15 +51,15 @@ export default function Home() {
         setExpenses(expensesRes.result || []);
 
         // Fetch statistics cho tháng hiện tại
-        const statsRes = await apiGet<StatisticsResponse>(
-          `/v1/statistics?paid_after=${paidAfter}&paid_before=${paidBefore}`
-        );
-        setStatistics(statsRes || {});
+        // const statsRes = await apiGet<StatisticsResponse>(
+        //   `/v1/statistics?paid_after=${paidAfter}&paid_before=${paidBefore}`
+        // );
+        // setStatistics(statsRes || {});
       } catch (error) {
         console.error("Error fetching data:", error);
         // ✅ Thêm dòng này để set empty data khi API fail
         setExpenses([]);
-        setStatistics({});
+        // setStatistics({});
       } finally {
         setLoading(false);
       }
@@ -275,11 +274,6 @@ export default function Home() {
     return cat ? cat.label : category;
   };
 
-  const monthNames = [
-    "Tháng Một", "Tháng Hai", "Tháng Ba", "Tháng Tư", "Tháng Năm", "Tháng Sáu",
-    "Tháng Bảy", "Tháng Tám", "Tháng Chín", "Tháng Mười", "Tháng Mười Một", "Tháng Mười Hai"
-  ];
-
   // Format month title như MoMo: "Tháng 10/2025"
   const formatMonthTitle = (date: Date) => {
     const month = date.getMonth() + 1;
@@ -340,10 +334,7 @@ export default function Home() {
   const handleEdit = (transaction: Expense) => {
     navigate("/record", { 
       state: { 
-        transaction: {
-          ...transaction,
-          amount: transaction.price, // Map price về amount cho form
-        }
+        transaction: transaction
       } 
     });
   };

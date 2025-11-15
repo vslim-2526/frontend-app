@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ command }) => {
   // Chỉ set base path khi build cho production (GitHub Pages)
   // Development (localhost) sẽ dùng base path mặc định '/'
   const base = command === 'build' ? '/frontend-app/' : '/';

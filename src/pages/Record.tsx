@@ -12,7 +12,7 @@ export default function Record() {
 
   const [formData, setFormData] = useState({
     description: editingTransaction?.description || "",
-    amount: editingTransaction?.amount || editingTransaction?.price || 0,
+    amount: editingTransaction?.price || 0, // ✅ Đổi từ amount sang price
     paid_at: editingTransaction?.paid_at 
       ? new Date(editingTransaction.paid_at).toISOString().split('T')[0] 
       : new Date().toISOString().split('T')[0],
@@ -80,7 +80,7 @@ export default function Record() {
   // ✅ Sync displayAmount khi editingTransaction thay đổi
   useEffect(() => {
     if (editingTransaction) {
-      const amount = editingTransaction.amount || editingTransaction.price || 0;
+      const amount = editingTransaction.price || 0; // ✅ Đổi từ amount sang price
       setDisplayAmount(formatNumberWithCommas(amount));
     } else {
       setDisplayAmount("");
