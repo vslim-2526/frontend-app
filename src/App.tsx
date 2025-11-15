@@ -6,8 +6,12 @@ import "./App.css";
 import "./styles.css";
 
 function App() {
+  // ✅ Lấy base path từ import.meta.env.BASE_URL (Vite tự động set)
+  // Hoặc có thể hardcode '/frontend-app' cho GitHub Pages
+  const basename = import.meta.env.BASE_URL || '/frontend-app';
+
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <header className="navbar">
         <div className="nav-inner">
           <div className="brand">Smart Expense tracker</div>
