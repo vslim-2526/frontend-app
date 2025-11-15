@@ -6,9 +6,10 @@ import "./App.css";
 import "./styles.css";
 
 function App() {
-  // ✅ Lấy base path từ import.meta.env.BASE_URL (Vite tự động set)
-  // Hoặc có thể hardcode '/frontend-app' cho GitHub Pages
-  const basename = import.meta.env.BASE_URL || '/frontend-app';
+  // ✅ Lấy base path và loại bỏ trailing slash
+  // BASE_URL sẽ là '/frontend-app/' nhưng basename cần '/frontend-app'
+  const baseUrl = import.meta.env.BASE_URL || '/frontend-app/';
+  const basename = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 
   return (
     <BrowserRouter basename={basename}>
