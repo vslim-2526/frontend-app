@@ -18,8 +18,7 @@ type ChatExpense = {
   user_id?: string;
   type?: "expense" | "income";
   description: string;
-  price: number;
-  amount?: number;
+  price: number; // ✅ Xóa amount, chỉ giữ price
   category?: string;
   paid_at: string;
   created_at?: string;
@@ -94,8 +93,7 @@ export default function Chat() {
             ? msg.transactions.map((exp: any) => ({
                 _id: exp._id,
                 description: exp.description,
-                price: Number(exp.price ?? exp.amount ?? 0),
-                amount: Number(exp.amount ?? exp.price ?? 0),
+                price: Number(exp.price ?? 0), // ✅ Xóa fallback exp.amount
                 category: exp.category,
                 paid_at: exp.paid_at,
                 created_at: exp.created_at,
@@ -149,14 +147,11 @@ export default function Chat() {
   const formatDateTime = (dateString: string) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
+    // ✅ Xóa hours và minutes vì không dùng
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
-    // return `${hours}:${minutes} - ${day}/${month}/${year}`;
     return `${day}/${month}/${year}`;
-
   };
 
   const formatCurrency = (amount: number) =>
@@ -178,8 +173,7 @@ export default function Chat() {
           user_id: expense.user_id,
           type: expense.type ?? "expense",
           description: expense.description,
-          price: Number(expense.price ?? expense.amount ?? 0),
-          amount: Number(expense.amount ?? expense.price ?? 0),
+          price: Number(expense.price ?? 0), // ✅ Xóa fallback expense.amount
           category: expense.category ?? "none",
           paid_at: expense.paid_at,
           created_at: expense.created_at,
@@ -216,8 +210,7 @@ export default function Chat() {
           user_id: exp.user_id,
           type: exp.type ?? "expense",
           description: exp.description,
-          price: Number(exp.price ?? exp.amount ?? 0),
-          amount: Number(exp.amount ?? exp.price ?? 0),
+          price: Number(exp.price ?? 0), // ✅ Xóa fallback exp.amount
           category: exp.category ?? "none",
           paid_at: exp.paid_at,
           created_at: exp.created_at,
@@ -309,7 +302,7 @@ export default function Chat() {
           user_id: expense.user_id ?? USER_ID,
           type: expense.type ?? "expense",
           description: expense.description,
-          price: Number(expense.price ?? expense.amount ?? 0),
+          price: Number(expense.price ?? 0), // ✅ Xóa fallback expense.amount
           category: newCategory,
           paid_at: expense.paid_at,
           created_at: expense.created_at,
@@ -413,8 +406,7 @@ export default function Chat() {
             user_id: exp.user_id,
             type: exp.type ?? "expense",
             description: exp.description,
-            price: Number(exp.price ?? exp.amount ?? 0),
-            amount: Number(exp.amount ?? exp.price ?? 0),
+            price: Number(exp.price ?? 0), // ✅ Xóa fallback exp.amount
             category: exp.category ?? "none",
             paid_at: exp.paid_at,
             created_at: exp.created_at,
@@ -571,7 +563,7 @@ export default function Chat() {
                             <div className="chat-transaction-card-header-inline">
                               <div className="chat-transaction-name-inline">{transaction.description}</div>
                               <div className="chat-transaction-amount-inline">
-                                -{formatCurrency(transaction.price ?? transaction.amount ?? 0)}
+                                -{formatCurrency(transaction.price)}
                               </div>
                             </div>
 

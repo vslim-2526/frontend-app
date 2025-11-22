@@ -12,19 +12,19 @@ export default function Record() {
 
   const [formData, setFormData] = useState({
     description: editingTransaction?.description || "",
-    amount: editingTransaction?.amount || editingTransaction?.price || 0,
+    price: editingTransaction?.price || 0, // ✅ Đổi từ amount sang price
     paid_at: editingTransaction?.paid_at 
       ? new Date(editingTransaction.paid_at).toISOString().split('T')[0] 
       : new Date().toISOString().split('T')[0],
     category: editingTransaction?.category || "FOOD",
-    type: "expense" as "expense" | "income", // ✅ Mặc định là expense, không cho phép thay đổi
+    type: "expense" as "expense" | "income",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // ✅ Thêm state để lưu giá trị hiển thị (có dấu phẩy)
-  const [displayAmount, setDisplayAmount] = useState("");
+  // ✅ Đổi displayAmount thành displayPrice (hoặc giữ tên displayAmount nhưng dùng cho price)
+  const [displayPrice, setDisplayPrice] = useState("");
 
   // const categories = [
   //   { value: "FOOD", label: "Food" },
@@ -67,12 +67,10 @@ export default function Record() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    if (name === "amount") {
-      // ✅ Format số tiền với dấu phẩy khi nhập
+    if (name === "price") { // ✅ Đổi từ "amount" sang "price"
       const formatted = formatNumberWithCommas(value);
-      setDisplayAmount(formatted);
+      setDisplayPrice(formatted); // ✅ Đổi từ displayAmount sang displayPrice
       
-      // Lưu giá trị số thực vào formData
       const numericValue = parseNumberFromFormatted(formatted);
       setFormData(prev => ({
         ...prev,
@@ -89,32 +87,30 @@ export default function Record() {
   // ✅ Sync displayAmount khi editingTransaction thay đổi
   useEffect(() => {
     if (editingTransaction) {
-      const amount = editingTransaction.amount || editingTransaction.price || 0;
-      setDisplayAmount(formatNumberWithCommas(amount));
+      const price = editingTransaction.price || 0; // ✅ Chỉ dùng price
+      setDisplayPrice(formatNumberWithCommas(price)); // ✅ Đổi từ displayAmount sang displayPrice
     } else {
-      setDisplayAmount("");
+      setDisplayPrice("");
     }
   }, [editingTransaction]);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ✅ Đổi tên function thành handlePriceChange hoặc giữ tên nhưng đổi logic
     let value = e.target.value;
-    
-    // ✅ Chỉ cho phép số và dấu phẩy
     value = value.replace(/[^\d,]/g, "");
     
-    // ✅ Format với dấu phẩy
     const numStr = value.replace(/,/g, "");
     if (numStr === "") {
-      setDisplayAmount("");
-      setFormData(prev => ({ ...prev, amount: 0 }));
+      setDisplayPrice(""); // ✅ Đổi từ displayAmount sang displayPrice
+      setFormData(prev => ({ ...prev, price: 0 })); // ✅ Đổi từ amount sang price
       return;
     }
     
     const num = parseInt(numStr, 10);
     if (!isNaN(num)) {
       const formatted = num.toLocaleString("en-US");
-      setDisplayAmount(formatted);
-      setFormData(prev => ({ ...prev, amount: num }));
+      setDisplayPrice(formatted); // ✅ Đổi từ displayAmount sang displayPrice
+      setFormData(prev => ({ ...prev, price: num })); // ✅ Đổi từ amount sang price
     }
   };
 
@@ -130,9 +126,9 @@ export default function Record() {
 
       const expenseData = {
         user_id,
-        type: "expense", // ✅ Luôn là expense
+        type: "expense",
         description: formData.description,
-        price: Number(formData.amount) || 0,
+        price: Number(formData.price) || 0, // ✅ Đổi từ formData.amount sang formData.price
         category: formData.category,
         paid_at: new Date(formData.paid_at).toISOString(),
       };
@@ -159,10 +155,10 @@ export default function Record() {
         setTimeout(() => {
           setFormData({
             description: "",
-            amount: 0,
+            price: 0,
             paid_at: new Date().toISOString().split('T')[0],
             category: "FOOD",
-            type: "expense", // ✅ Luôn là expense
+            type: "expense",
           });
           setSuccess(false);
         }, 2000);
@@ -244,12 +240,12 @@ export default function Record() {
 
             {/* Số tiền */}
             <div className="form-group">
-              <label htmlFor="amount" className="form-label">Số tiền</label>
+              <label htmlFor="price" className="form-label">Số tiền</label>
               <input
                 type="text"
-                id="amount"
-                name="amount"
-                value={displayAmount}
+                id="price"
+                name="price"
+                value={displayPrice}
                 onChange={handleAmountChange}
                 placeholder="0"
                 className="form-input"
