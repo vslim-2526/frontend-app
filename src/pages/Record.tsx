@@ -12,7 +12,7 @@ export default function Record() {
 
   const [formData, setFormData] = useState({
     description: editingTransaction?.description || "",
-    amount: editingTransaction?.price || 0, // ✅ Đổi từ amount sang price
+    amount: editingTransaction?.amount || editingTransaction?.price || 0,
     paid_at: editingTransaction?.paid_at 
       ? new Date(editingTransaction.paid_at).toISOString().split('T')[0] 
       : new Date().toISOString().split('T')[0],
@@ -26,14 +26,23 @@ export default function Record() {
   // ✅ Thêm state để lưu giá trị hiển thị (có dấu phẩy)
   const [displayAmount, setDisplayAmount] = useState("");
 
+  // const categories = [
+  //   { value: "FOOD", label: "Food" },
+  //   { value: "APPLIANCES", label: "Appliances" },
+  //   { value: "TRANSPORT", label: "Transport" },
+  //   { value: "HEALTH", label: "Health" },
+  //   { value: "BILLS", label: "Bills" },
+  //   { value: "Salary", label: "Salary" },
+  //   { value: "Other", label: "Other" },
+  // ];
+
   const categories = [
-    { value: "FOOD", label: "Food" },
-    { value: "APPLIANCES", label: "Appliances" },
-    { value: "TRANSPORT", label: "Transport" },
-    { value: "HEALTH", label: "Health" },
-    { value: "BILLS", label: "Bills" },
-    { value: "Salary", label: "Salary" },
-    { value: "Other", label: "Other" },
+    { value: "FOOD", label: "Ăn uống", icon: "🍽️" },
+    { value: "APPLIANCES", label: "Mua sắm", icon: "🛒" },
+    { value: "TRANSPORT", label: "Đi lại", icon: "🚗" },
+    { value: "HEALTH", label: "Sức khỏe", icon: "🏥" },
+    { value: "BILLS", label: "Hóa đơn", icon: "📄" }, 
+    { value: "none", label: "Khác", icon: "📦" },
   ];
 
   // ✅ Function format số với dấu phẩy
@@ -80,7 +89,7 @@ export default function Record() {
   // ✅ Sync displayAmount khi editingTransaction thay đổi
   useEffect(() => {
     if (editingTransaction) {
-      const amount = editingTransaction.price || 0; // ✅ Đổi từ amount sang price
+      const amount = editingTransaction.amount || editingTransaction.price || 0;
       setDisplayAmount(formatNumberWithCommas(amount));
     } else {
       setDisplayAmount("");
@@ -200,7 +209,7 @@ export default function Record() {
         </button>
         <button className="nav-tab active">Ghi chép</button>
         <button 
-          className="nav-tab" 
+          className="nav-tab momo-pink" 
           onClick={() => navigate("/chat")}
         >
           Chat

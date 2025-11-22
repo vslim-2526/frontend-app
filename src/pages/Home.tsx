@@ -361,7 +361,7 @@ export default function Home() {
           Ghi chép
         </button>
         <button 
-          className="nav-tab" 
+          className="nav-tab momo-pink" 
           onClick={() => navigate("/chat")}
         >
           Chat

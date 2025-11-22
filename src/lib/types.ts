@@ -3,7 +3,7 @@ export type Expense = {
   user_id?: string;
   type: "expense" | "income";
   description: string;
-  price: number; // ✅ Đổi từ amount sang price
+  amount: number;
   category: string;
   paid_at: string; // ISO date string
   created_at?: string;

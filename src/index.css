@@ -35,6 +35,17 @@ h1 {
   line-height: 1.1;
 }
 
+.chat-clear-btn {
+  cursor: pointer;
+  color: #666;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.chat-clear-btn:hover {
+  color: #333;
+
 button {
   border-radius: 8px;
   border: 1px solid transparent;

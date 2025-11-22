@@ -46,14 +46,37 @@
 }
 
 .nav-tab.active {
-  background: #d0d0d0;
-  color: #1a1a1a;
+  background: #a4146f;
+  color: #eeeeee;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .nav-tab:hover {
   background: #d5d5d5;
 }
+
+/* .momo-pink {
+  background: #a4146f;
+  color: #eeeeee;
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.momo-pink:hover {
+  background: #d52695;
+  color: #eeeeee;
+} */
+
+/* .momo-pink.active {
+  background: #a4146f;
+  color: #eeeeee;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+} */
+
 
 /* Summary Cards */
 .summary-cards {
@@ -1030,6 +1053,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 16vw;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
