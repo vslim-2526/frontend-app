@@ -77,23 +77,6 @@
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 } */
 
-
-/* Summary Cards */
-.summary-cards {
-  display: grid;
-  grid-template-columns: 2fr; /* ✅ Chỉ 1 cột, chiếm 2/3 width (bằng calendar) */
-  gap: 20px;
-  margin-bottom: 32px;
-  max-width: calc(66.666% - 12px); /* ✅ Bằng width của calendar (2fr trong grid 2fr 1fr) */
-}
-
-/* Hoặc nếu muốn full width của calendar section: */
-.summary-cards {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 32px;
-}
-
 .summary-card {
   background: white;
   border-radius: 16px;
@@ -1195,4 +1178,161 @@
 .chat-transaction-edit-btn-inline:hover {
   background: #f0f0f0;
   color: #666;
+}
+
+/* Summary Cards - 2 cards cùng hàng, 100% width, tỷ lệ 1:2 */
+.summary-cards {
+  display: grid !important;
+  grid-template-columns: 1fr 2fr !important;
+  column-gap: 24px !important;
+  row-gap: 0;
+  margin-bottom: 32px;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* ✅ Đảm bảo các cards con fit vào grid cell */
+.summary-cards > .summary-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0; /* ✅ Quan trọng: cho phép grid shrink */
+  box-sizing: border-box;
+  margin: 0 !important;
+}
+
+/* Card tổng chi tiêu - Compact */
+.summary-card-compact {
+  min-width: 200px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Card thống kê */
+.statistics-card {
+  min-height: 180px; /* ✅ Giảm từ 250px xuống 180px */
+  min-width: 300px;
+  overflow: hidden;
+}
+
+/* ✅ Responsive: Khi màn hình nhỏ, chuyển sang layout dọc */
+@media (max-width: 768px) {
+  .summary-cards {
+    grid-template-columns: 1fr; /* ✅ 1 cột khi màn hình nhỏ */
+    gap: 20px; /* ✅ Thêm gap lại khi dọc */
+  }
+  
+  .summary-card-compact {
+    min-width: 100%;
+    max-width: 100%;
+  }
+  
+  .statistics-card {
+    min-width: 100%;
+  }
+}
+
+/* ✅ Responsive: Khi màn hình rất nhỏ */
+@media (max-width: 480px) {
+  .statistics-content {
+    flex-direction: column; /* ✅ Chuyển list và chart thành dọc */
+    gap: 16px;
+  }
+  
+  .statistics-list {
+    min-width: 100%;
+  }
+  
+  .statistics-chart {
+    min-width: 100%;
+  }
+}
+
+.statistics-content {
+  display: flex;
+  gap: 16px; /* ✅ Giảm từ 24px xuống 16px */
+  width: 100%;
+  height: 100%;
+}
+
+.statistics-list {
+  flex: 1;
+  min-width: 200px;
+}
+
+.statistics-title {
+  font-size: 15px; /* ✅ Giảm từ 16px xuống 15px */
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px; /* ✅ Giảm từ 16px xuống 8px */
+}
+
+.category-stats-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 40px; /* ✅ Giảm row-gap từ 20px xuống 8px */
+}
+
+.category-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1px 0; /* ✅ Giảm từ 2px xuống 1px */
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.category-stat-item:last-child {
+  border-bottom: none;
+}
+
+.category-stat-info {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* ✅ Giảm gap xuống 4px */
+}
+
+.category-stat-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.category-stat-name {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.category-stat-count {
+  font-size: 12px;
+  color: #999;
+}
+
+.category-stat-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f44336;
+  margin-left: 8px; /* ✅ Thêm margin-left nhỏ để tạo khoảng cách với tên */
+}
+
+.statistics-chart {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ✅ Giảm height của pie chart */
+.statistics-chart .recharts-wrapper {
+  height: 150px !important; /* ✅ Giảm từ 200px xuống 150px */
+}
+
+.no-statistics,
+.no-chart-data {
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  padding: 40px 20px;
 }

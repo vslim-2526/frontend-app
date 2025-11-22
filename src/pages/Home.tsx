@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiGet, apiDelete} from "../lib/api"; // ✅ Thêm apiDelete, apiPut
 import type { Expense, ExpensesResponse } from "../lib/types";
 import { useNavigate } from "react-router-dom";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'; // ✅ Nếu dùng recharts
 
 // ✅ Thêm CATEGORIES constant để map category value sang label
 const CATEGORIES = [
@@ -339,6 +340,55 @@ export default function Home() {
     });
   };
 
+  // ✅ Helper function để lấy màu cho category - DI CHUYỂN LÊN TRƯỚC
+  const getCategoryColor = (category: string): string => {
+    const colors: Record<string, string> = {
+      FOOD: "#FF6B6B",
+      APPLIANCES: "#4ECDC4",
+      TRANSPORT: "#45B7D1",
+      HEALTH: "#96CEB4",
+      BILLS: "#FFEAA7",
+      none: "#DDA0DD",
+    };
+    return colors[category] || "#95A5A6";
+  };
+
+  // ✅ Tính toán statistics theo category
+  const categoryStats = useMemo(() => {
+    const stats: Record<string, { total: number; count: number }> = {};
+    
+    expenses
+      .filter(e => e.type === "expense")
+      .forEach(e => {
+        const category = e.category || "none";
+        const price = Number(e.price) || 0;
+        
+        if (!stats[category]) {
+          stats[category] = { total: 0, count: 0 };
+        }
+        stats[category].total += price;
+        stats[category].count += 1;
+      });
+    
+    return stats;
+  }, [expenses]);
+
+  // ✅ Format data cho pie chart - SAU getCategoryColor
+  const pieChartData = useMemo(() => {
+    return Object.entries(categoryStats)
+      .map(([category, data]) => {
+        const categoryInfo = CATEGORIES.find(c => c.value === category);
+        return {
+          name: categoryInfo ? categoryInfo.label : category,
+          value: data.total,
+          count: data.count,
+          color: getCategoryColor(category), // ✅ Bây giờ getCategoryColor đã được định nghĩa
+        };
+      })
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [categoryStats]);
+
   if (loading) {
     return <div className="page">Loading...</div>;
   }
@@ -368,14 +418,77 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Summary Cards - Chỉ hiển thị Tổng chi tiêu */}
+      {/* Summary Cards - Tổng chi tiêu và Thống kê */}
       <div className="summary-cards">
-        <div className="summary-card expense-card">
+        {/* Card Tổng chi tiêu - Rút ngắn lại */}
+        <div className="summary-card expense-card summary-card-compact">
           <div className="card-icon expense-icon">↓</div>
           <div className="card-content">
             <div className="card-title">Tổng chi tiêu</div>
             <div className="card-amount expense-amount">{formatCurrency(summary.totalExpenses)}</div>
             <div className="card-subtitle">Tháng này</div>
+          </div>
+        </div>
+
+        {/* Card Thống kê - Mới */}
+        <div className="summary-card statistics-card">
+          <div className="statistics-content">
+            {/* Danh sách categories bên trái */}
+            <div className="statistics-list">
+              <div className="statistics-title">Chi tiêu theo danh mục</div>
+              <div className="category-stats-list">
+                {pieChartData.map((item, index) => (
+                  <div key={index} className="category-stat-item">
+                    <div className="category-stat-info">
+                      <div 
+                        className="category-stat-color" 
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="category-stat-name">{item.name}</span>
+                      <span className="category-stat-count">({item.count})</span>
+                    </div>
+                    <span className="category-stat-amount">{formatCurrency(item.value)}</span>
+                  </div>
+                ))}
+                {pieChartData.length === 0 && (
+                  <div className="no-statistics">Chưa có dữ liệu</div>
+                )}
+              </div>
+            </div>
+
+            {/* Pie chart bên phải */}
+            <div className="statistics-chart">
+              {pieChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={160}> {/* ✅ Giảm từ 200 xuống 150 */}
+                  <PieChart>
+                    <Pie
+                      data={pieChartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      // label={({ name, percent }) => {
+                      //   // ✅ Thêm null check cho percent
+                      //   if (percent === undefined) return name;
+                      //   return `${name}: ${(percent * 100).toFixed(0)}%`;
+                      // }}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {pieChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
+                    {/* <Legend /> */}
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="no-chart-data">Chưa có dữ liệu</div>
+              )}
+            </div>
           </div>
         </div>
       </div>
