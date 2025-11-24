@@ -177,16 +177,6 @@ export default function Record() {
     return date.toISOString().split('T')[0];
   };
 
-  const formatDateForDisplay = (dateString: string) => {
-    const date = new Date(dateString);
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    };
-    return date.toLocaleDateString('vi-VN', options);
-  };
-
   return (
     <div className="home-page">
       {/* Header */}
@@ -267,9 +257,6 @@ export default function Record() {
                   className="form-input form-input-date"
                   required
                 />
-                <span className="form-input-date-display">
-                  {formatDateForDisplay(formData.paid_at)}
-                </span>
               </div>
             </div>
 

@@ -84,15 +84,34 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   position: relative;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;  /* xếp theo cột */
+  justify-content: center; /* căn giữa theo trục dọc (chiều cao) */
   gap: 16px;
-  width: 100%; /* ✅ Chiếm full width của container */
-  max-width: none; /* ✅ Bỏ max-width nếu có */
+  width: 100%;
+}
+
+.summary-card-content {
+  display: flex;
+  align-items: center;      /* icon + chữ cùng nằm giữa theo chiều cao */
+  gap: 16px;                /* khoảng cách giữa icon và chữ */
+  width: 100%;
+}
+
+.summary-card.expense-card {
+  align-items: flex-start;  /* nội dung bám về bên trái của card */
+  text-align: left;
+}
+
+.summary-card .card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
 }
 
 .card-icon {
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -120,14 +139,23 @@
   flex: 1;
 }
 
+.summary-card .card-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* căn giữa theo chiều dọc */
+  align-items: center;      /* căn giữa ngang nếu cần */
+  height: 100%;             /* bảo đảm nội dung chiếm toàn bộ chiều cao */
+  text-align: center;
+}
+
 .card-title {
-  font-size: 14px;
+  font-size: 20px;
   color: #666;
   margin-bottom: 8px;
 }
 
 .card-amount {
-  font-size: 32px;
+  font-size: 40px;
   font-weight: 700;
   margin-bottom: 4px;
 }
@@ -145,7 +173,7 @@
 }
 
 .card-subtitle {
-  font-size: 12px;
+  font-size: 18px;
   color: #999;
 }
 
@@ -503,20 +531,6 @@
 
 .form-input-wrapper {
   position: relative;
-}
-
-.form-input-date {
-  padding-right: 120px;
-}
-
-.form-input-date-display {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 14px;
-  color: #666;
-  pointer-events: none;
 }
 
 .form-select-wrapper {
@@ -1050,6 +1064,23 @@
   position: relative;
 }
 
+.chat-transaction-card-inline.deleted {
+  background: #f5f5f5;
+  border-color: #d0d0d0;
+  opacity: 0.85;
+}
+
+.chat-transaction-card-inline.deleted .chat-transaction-name-inline,
+.chat-transaction-card-inline.deleted .chat-transaction-amount-inline {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.chat-transaction-card-inline.deleted .chat-transaction-category-inline {
+  background: #f0f0f0;
+  color: #777;
+}
+
 .chat-transaction-card-header-inline {
   display: flex;
   justify-content: space-between;
@@ -1258,10 +1289,11 @@
 .statistics-list {
   flex: 1;
   min-width: 200px;
+  padding-left: 32px; /* dời sang phải */
 }
 
 .statistics-title {
-  font-size: 15px; /* ✅ Giảm từ 16px xuống 15px */
+  font-size: 20px; /* ✅ Giảm từ 16px xuống 15px */
   font-weight: 600;
   color: #333;
   margin-bottom: 8px; /* ✅ Giảm từ 16px xuống 8px */
@@ -1299,18 +1331,18 @@
 }
 
 .category-stat-name {
-  font-size: 14px;
+  font-size: 16px;
   color: #333;
   font-weight: 500;
 }
 
 .category-stat-count {
-  font-size: 12px;
+  font-size: 14px;
   color: #999;
 }
 
 .category-stat-amount {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #f44336;
   margin-left: 8px; /* ✅ Thêm margin-left nhỏ để tạo khoảng cách với tên */

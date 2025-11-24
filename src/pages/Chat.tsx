@@ -12,6 +12,8 @@ const CATEGORIES = [
   { value: "none", label: "Khác", icon: "📦" },
 ];
 
+type PanelSource = "add" | "update" | "search" | "delete";
+
 // Dạng expense tối thiểu để hiển thị trong panel
 type ChatExpense = {
   _id?: string;
@@ -23,6 +25,7 @@ type ChatExpense = {
   paid_at: string;
   created_at?: string;
   modified_at?: string;
+  panelSource?: PanelSource;
 };
 
 type Message = {
@@ -100,6 +103,12 @@ export default function Chat() {
                 modified_at: exp.modified_at,
                 user_id: exp.user_id,
                 type: exp.type ?? "expense",
+                panelSource:
+                  exp.panelSource === "update" ||
+                  exp.panelSource === "search" ||
+                  exp.panelSource === "delete"
+                    ? exp.panelSource
+                    : "add",
               }))
             : undefined,
         }));
@@ -160,6 +169,19 @@ export default function Chat() {
   const getCategoryInfo = (category?: string) => {
     const found = CATEGORIES.find((cat) => cat.value === category);
     return found || { value: "none", label: "Khác", icon: "📦" };
+  };
+
+  const getPanelStatusText = (transaction: ChatExpense) => {
+    switch (transaction.panelSource) {
+      case "update":
+        return "Đã chỉnh sửa";
+      case "search":
+        return "Kết quả tìm kiếm";
+    case "delete":
+      return "Đã xóa";
+      default:
+        return "Đã thêm";
+    }
   };
 
   const fetchExpensesByIds = async (ids: string[]): Promise<ChatExpense[]> => {
@@ -373,6 +395,19 @@ export default function Chat() {
       const summaryParts: string[] = [];
       let summary = "Đã xử lý yêu cầu của bạn.";
       let transactions: ChatExpense[] = [];
+      const seenTransactionKeys = new Set<string>();
+
+      const appendUnique = (items: ChatExpense[], source: PanelSource) => {
+        if (!items?.length) return;
+        items.forEach((item) => {
+          const keyBase = item._id ?? `${item.description}-${item.paid_at}`;
+          const key = `${source}-${keyBase}`;
+          if (!seenTransactionKeys.has(key)) {
+            seenTransactionKeys.add(key);
+            transactions.push({ ...item, panelSource: source });
+          }
+        });
+      };
 
       if (response.message) {
         summaryParts.push(response.message);
@@ -389,19 +424,21 @@ export default function Chat() {
           ...toArray(response.ret.add_expense?.inserted_id),
         ];
         if (insertedIds.length > 0) {
-          transactions = await fetchExpensesByIds([...new Set(insertedIds)]);
+          const added = await fetchExpensesByIds([...new Set(insertedIds)]);
+          appendUnique(added, "add");
         } else if (response.ret.add_expense?.success) {
           const frame = response.doableFrames?.find(
             (f: any) => f.intent === "add_expense"
           );
-          transactions = await fetchRecentExpenses(frame?.description, frame?.count ?? 1);
+          const recent = await fetchRecentExpenses(frame?.description, frame?.count ?? 1);
+          appendUnique(recent, "add");
         }
 
         if (
           Array.isArray(response.ret.search_expense) &&
           response.ret.search_expense.length
         ) {
-          transactions = response.ret.search_expense.map((exp: any) => ({
+          const searched = response.ret.search_expense.map((exp: any) => ({
             _id: exp._id?.toString() ?? exp._id,
             user_id: exp.user_id,
             type: exp.type ?? "expense",
@@ -412,12 +449,10 @@ export default function Chat() {
             created_at: exp.created_at,
             modified_at: exp.modified_at,
           }));
+          appendUnique(searched, "search");
         }
 
-        if (
-          (!transactions || transactions.length === 0) &&
-          response.ret.update_expense?.modifiedCount
-        ) {
+        if (response.ret.update_expense?.modifiedCount) {
           const updateFrames =
             response.doableFrames?.filter((f: any) => f.intent === "update_expense") ?? [];
 
@@ -444,9 +479,49 @@ export default function Chat() {
             );
           }
 
-          if (updated.length > 0) {
-            transactions = updated;
+          appendUnique(updated, "update");
+        }
+
+        if (response.ret.delete_expense?.deletedCount) {
+          const deleteFrames =
+            response.doableFrames?.filter((f: any) => f.intent === "delete_expense") ?? [];
+
+          const candidateIds = deleteFrames
+            .map((frame: any) => frame._id)
+            .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
+
+          let deleted: ChatExpense[] = [];
+
+          if (candidateIds.length > 0) {
+            deleted = await fetchExpensesByIds([...new Set(candidateIds)]);
           }
+
+          const knownIds = new Set(deleted.map((tx) => tx._id).filter(Boolean) as string[]);
+
+          deleteFrames.forEach((frame: any, index: number) => {
+            const frameId =
+              typeof frame._id === "string" && frame._id.length > 0 ? frame._id : undefined;
+            if (!frameId || !knownIds.has(frameId)) {
+              const placeholder: ChatExpense = {
+                _id: frameId ?? `deleted-${index}-${Date.now()}`,
+                description:
+                  frame.description ?? frame.target_description ?? "Giao dịch đã xóa",
+                price: Number(frame.price ?? frame.target_price ?? 0) || 0,
+                category: frame.category ?? "none",
+                paid_at:
+                  frame.date instanceof Date
+                    ? frame.date.toISOString()
+                    : new Date().toISOString(),
+                type: "expense",
+              };
+              deleted.push(placeholder);
+              if (frameId) {
+                knownIds.add(frameId);
+              }
+            }
+          });
+
+          appendUnique(deleted, "delete");
         }
       } else if (response.doableFrames) {
         const frameSummary = buildSummaryFromRet({
@@ -558,7 +633,9 @@ export default function Chat() {
                         return (
                           <div
                             key={transaction._id ?? `${transaction.description}-${transaction.paid_at}`}
-                            className="chat-transaction-card-inline"
+                            className={`chat-transaction-card-inline${
+                              transaction.panelSource === "delete" ? " deleted" : ""
+                            }`}
                           >
                             <div className="chat-transaction-card-header-inline">
                               <div className="chat-transaction-name-inline">{transaction.description}</div>
@@ -570,7 +647,9 @@ export default function Chat() {
                             <div className="chat-transaction-meta-inline">
                               <div className="chat-transaction-status-inline">
                                 <div className="chat-transaction-status-icon-inline">✓</div>
-                                <span className="chat-transaction-status-text-inline">Đã thêm</span>
+                                  <span className="chat-transaction-status-text-inline">
+                                    {getPanelStatusText(transaction)}
+                                  </span>
                                 <span className="chat-transaction-separator-inline">•</span>
                                 <span className="chat-transaction-time-inline">
                                   {formatDateTime(transaction.paid_at)}
