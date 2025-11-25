@@ -84,34 +84,24 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   position: relative;
   display: flex;
-  flex-direction: column;  /* xếp theo cột */
-  justify-content: center; /* căn giữa theo trục dọc (chiều cao) */
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: 16px;
   width: 100%;
 }
 
-.summary-card-content {
-  display: flex;
-  align-items: center;      /* icon + chữ cùng nằm giữa theo chiều cao */
-  gap: 16px;                /* khoảng cách giữa icon và chữ */
-  width: 100%;
-}
-
 .summary-card.expense-card {
-  align-items: flex-start;  /* nội dung bám về bên trái của card */
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
   text-align: left;
-}
-
-.summary-card .card-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  text-align: left;
+  gap: 20px;
 }
 
 .card-icon {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -142,10 +132,15 @@
 .summary-card .card-content {
   display: flex;
   flex-direction: column;
-  justify-content: center; /* căn giữa theo chiều dọc */
-  align-items: center;      /* căn giữa ngang nếu cần */
-  height: 100%;             /* bảo đảm nội dung chiếm toàn bộ chiều cao */
+  justify-content: center;
+  align-items: center;
+  height: 100%;
   text-align: center;
+}
+
+.summary-card.expense-card .card-content {
+  align-items: flex-start;
+  text-align: left;
 }
 
 .card-title {
@@ -155,7 +150,7 @@
 }
 
 .card-amount {
-  font-size: 40px;
+  font-size: 46px;
   font-weight: 700;
   margin-bottom: 4px;
 }
@@ -1125,6 +1120,22 @@
   font-size: 9px;
   font-weight: 700;
   flex-shrink: 0;
+}
+
+.chat-transaction-status-icon-inline.status-add {
+  background: #4caf50;
+}
+
+.chat-transaction-status-icon-inline.status-update {
+  background: #ffa726;
+}
+
+.chat-transaction-status-icon-inline.status-delete {
+  background: #ef5350;
+}
+
+.chat-transaction-status-icon-inline.status-search {
+  background: #42a5f5;
 }
 
 .chat-transaction-status-text-inline {

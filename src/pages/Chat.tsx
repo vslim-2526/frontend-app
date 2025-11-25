@@ -184,6 +184,19 @@ export default function Chat() {
     }
   };
 
+  const getPanelStatusClass = (transaction: ChatExpense) => {
+    switch (transaction.panelSource) {
+      case "update":
+        return "status-update";
+      case "search":
+        return "status-search";
+      case "delete":
+        return "status-delete";
+      default:
+        return "status-add";
+    }
+  };
+
   const fetchExpensesByIds = async (ids: string[]): Promise<ChatExpense[]> => {
     const results: ChatExpense[] = [];
 
@@ -646,7 +659,13 @@ export default function Chat() {
 
                             <div className="chat-transaction-meta-inline">
                               <div className="chat-transaction-status-inline">
-                                <div className="chat-transaction-status-icon-inline">✓</div>
+                                  <div
+                                    className={`chat-transaction-status-icon-inline ${getPanelStatusClass(
+                                      transaction
+                                    )}`}
+                                  >
+                                    ✓
+                                  </div>
                                   <span className="chat-transaction-status-text-inline">
                                     {getPanelStatusText(transaction)}
                                   </span>
