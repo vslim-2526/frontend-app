@@ -333,7 +333,7 @@ export default function Home() {
 
   // ✅ Thêm function sửa giao dịch
   const handleEdit = (transaction: Expense) => {
-    navigate("/record", { 
+    navigate(`/record?mode=update&id=${transaction._id}`, { 
       state: { 
         transaction: transaction
       } 

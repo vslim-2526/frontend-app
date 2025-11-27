@@ -7,6 +7,10 @@ export default function Record() {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // ✅ Đọc query param để kiểm tra chế độ update
+  const searchParams = new URLSearchParams(location.search);
+  const isUpdateMode = searchParams.get('mode') === 'update';
+  
   // Lấy transaction từ state nếu có (khi edit)
   const editingTransaction = location.state?.transaction as Expense | undefined;
 
@@ -165,7 +169,9 @@ export default function Record() {
       }
     } catch (err) {
       console.error("Error creating/updating expense:", err);
-      const errorMessage = err instanceof Error ? err.message : "Có lỗi xảy ra khi thêm giao dịch";
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : (isUpdateMode ? "Có lỗi xảy ra khi sửa giao dịch" : "Có lỗi xảy ra khi thêm giao dịch");
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -304,7 +310,9 @@ export default function Record() {
               className="form-submit-btn"
               disabled={loading}
             >
-              {loading ? "Đang thêm..." : "Thêm giao dịch"}
+              {loading 
+                ? (isUpdateMode ? "Đang sửa..." : "Đang thêm...") 
+                : (isUpdateMode ? "Sửa giao dịch" : "Thêm giao dịch")}
             </button>
           </form>
         </div>

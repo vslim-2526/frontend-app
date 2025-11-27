@@ -49,10 +49,22 @@ type ChatResponse = {
       inserted_id?: string | string[] | Record<string, string>;
       [key: string]: any;
     } | null;
-    delete_expense?: { deletedCount?: number } | null;
-    update_expense?: { modifiedCount?: number } | null;
+    delete_expense?: { 
+      deletedCount?: number;
+      expenses?: any[]; // ✅ Backend trả về expenses đã xóa
+      deleted?: any[]; // ✅ Giữ lại để tương thích
+      [key: string]: any;
+    } | null;
+    update_expense?: { 
+      modifiedCount?: number;
+      expenses?: any[]; // ✅ Backend trả về expenses
+      updated?: any[]; // ✅ Giữ lại để tương thích
+      [key: string]: any;
+    } | null;
     search_expense?: any[] | null;
     stat_expense?: Record<string, any> | null;
+    updated?: any[]; // Thêm trường updated để lấy danh sách giao dịch đã cập nhật
+    expenses?: any[]; // Thêm trường expenses để lấy danh sách giao dịch đã cập nhật
   };
 };
 
@@ -358,7 +370,7 @@ export default function Chat() {
       );
       setEditingCategory((prev) => {
         const next = { ...prev };
-        delete next[expenseId];
+        delete next[`${messageId}-${expenseId}`];
         return next;
       });
     } catch (error) {
@@ -385,26 +397,6 @@ export default function Chat() {
         `/v1/chat?user_id=${USER_ID}`,
         { utterance: trimmed }
       );
-      // trong handleSend, ngay sau khi nhận response
-      console.log("Chat raw response:", response);
-      if (response.doableFrames?.length) {
-        console.log(
-          "Parsed frames:",
-          response.doableFrames.map((f) => ({
-            intent: f.intent,
-            description: f.description,
-            date: f.date instanceof Date ? f.date.toISOString() : f.date,
-            condition_date: f.condition_date instanceof Date ? f.condition_date.toISOString() : f.condition_date,
-          }))
-        );
-      }
-      if (response.ret?.search_expense) {
-        console.log("ret.search_expense:", response.ret.search_expense);
-      }
-      
-      // ✅ Debug: log toàn bộ response để xem backend trả về gì
-      console.log("Chat response:", response);
-//lag phết
       const summaryParts: string[] = [];
       let summary = "Đã xử lý yêu cầu của bạn.";
       let transactions: ChatExpense[] = [];
@@ -452,7 +444,7 @@ export default function Chat() {
           response.ret.search_expense.length
         ) {
           const searched = response.ret.search_expense.map((exp: any) => ({
-            _id: exp._id?.toString() ?? exp._id,
+            _id: exp._id?.toString() ?? exp._id ?? `search-${exp.description}-${exp.paid_at}`, // ✅ Fallback _id
             user_id: exp.user_id,
             type: exp.type ?? "expense",
             description: exp.description,
@@ -466,73 +458,177 @@ export default function Chat() {
         }
 
         if (response.ret.update_expense?.modifiedCount) {
-          const updateFrames =
-            response.doableFrames?.filter((f: any) => f.intent === "update_expense") ?? [];
-
-          const candidateIds = updateFrames
-            .map((frame: any) => frame._id)
-            .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
-
+          // ✅ Ưu tiên lấy từ response.ret.update_expense.expenses hoặc updated nếu có
           let updated: ChatExpense[] = [];
+          
+          // ✅ Kiểm tra expenses (backend trả về field này)
+          const expensesData = response.ret.update_expense.expenses ?? response.ret.update_expense.updated;
+          
+          if (Array.isArray(expensesData) && expensesData.length > 0) {
+            // Backend đã trả về thông tin expenses đã update
+            updated = expensesData.map((exp: any) => {
+              // ✅ Đảm bảo _id là string
+              let expenseId: string | undefined;
+              if (exp._id) {
+                if (typeof exp._id === 'string') {
+                  expenseId = exp._id;
+                } else if (exp._id.toString) {
+                  expenseId = exp._id.toString();
+                } else if (exp._id.$oid) {
+                  expenseId = exp._id.$oid;
+                } else {
+                  expenseId = String(exp._id);
+                }
+              }
+              
+              return {
+                _id: expenseId ?? `update-${exp.description}-${exp.paid_at}`,
+                user_id: exp.user_id,
+                type: exp.type ?? "expense",
+                description: exp.description,
+                price: Number(exp.price ?? 0),
+                category: exp.category ?? "none",
+                paid_at: exp.paid_at,
+                created_at: exp.created_at,
+                modified_at: exp.modified_at,
+              };
+            });
+          } else {
+            // Fallback về cách cũ: fetch từ API
+            const updateFrames =
+              response.doableFrames?.filter((f: any) => f.intent === "update_expense") ?? [];
 
-          if (candidateIds.length > 0) {
-            updated = await fetchExpensesByIds([...new Set(candidateIds)]);
-          }
+            const candidateIds = updateFrames
+              .map((frame: any) => frame._id)
+              .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
 
-          if (updated.length === 0 && updateFrames.length > 0) {
-            const fallbackFrame = updateFrames[updateFrames.length - 1];
-            const hintDescription =
-              fallbackFrame.target_description ||
-              fallbackFrame.description ||
-              undefined;
+            if (candidateIds.length > 0) {
+              updated = await fetchExpensesByIds([...new Set(candidateIds)]);
+            }
 
-            updated = await fetchRecentExpenses(
-              hintDescription,
-              response.ret.update_expense.modifiedCount ?? 1
-            );
+            if (updated.length === 0 && updateFrames.length > 0) {
+              const fallbackFrame = updateFrames[updateFrames.length - 1];
+              const hintDescription =
+                fallbackFrame.target_description ||
+                fallbackFrame.description ||
+                undefined;
+
+              updated = await fetchRecentExpenses(
+                hintDescription,
+                response.ret.update_expense.modifiedCount ?? 1
+              );
+            }
+            
+            // ✅ Đảm bảo tất cả updated items có _id
+            updated = updated.map((exp) => ({
+              ...exp,
+              _id: exp._id ?? `update-${exp.description}-${exp.paid_at}`, // ✅ Fallback _id nếu thiếu
+            }));
           }
 
           appendUnique(updated, "update");
         }
 
         if (response.ret.delete_expense?.deletedCount) {
-          const deleteFrames =
-            response.doableFrames?.filter((f: any) => f.intent === "delete_expense") ?? [];
-
-          const candidateIds = deleteFrames
-            .map((frame: any) => frame._id)
-            .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
-
+          // ✅ Ưu tiên lấy từ response.ret.delete_expense.expenses hoặc deleted nếu có
           let deleted: ChatExpense[] = [];
-
-          if (candidateIds.length > 0) {
-            deleted = await fetchExpensesByIds([...new Set(candidateIds)]);
-          }
-
-          const knownIds = new Set(deleted.map((tx) => tx._id).filter(Boolean) as string[]);
-
-          deleteFrames.forEach((frame: any, index: number) => {
-            const frameId =
-              typeof frame._id === "string" && frame._id.length > 0 ? frame._id : undefined;
-            if (!frameId || !knownIds.has(frameId)) {
-              const placeholder: ChatExpense = {
-                _id: frameId ?? `deleted-${index}-${Date.now()}`,
-                description:
-                  frame.description ?? frame.target_description ?? "Giao dịch đã xóa",
-                price: Number(frame.price ?? frame.target_price ?? 0) || 0,
-                category: frame.category ?? "none",
-                paid_at:
-                  frame.date instanceof Date
-                    ? frame.date.toISOString()
-                    : new Date().toISOString(),
-                type: "expense",
+          
+          // ✅ Kiểm tra expenses (backend trả về field này)
+          const deleteData = response.ret.delete_expense;
+          const expensesData = deleteData.expenses ?? deleteData.deleted;
+          
+          if (Array.isArray(expensesData) && expensesData.length > 0) {
+            // Backend đã trả về thông tin expenses đã xóa
+            deleted = expensesData.map((exp: any) => {
+              // ✅ Đảm bảo _id là string
+              let expenseId: string | undefined;
+              if (exp._id) {
+                if (typeof exp._id === 'string') {
+                  expenseId = exp._id;
+                } else if (exp._id.toString) {
+                  expenseId = exp._id.toString();
+                } else if (exp._id.$oid) {
+                  expenseId = exp._id.$oid;
+                } else {
+                  expenseId = String(exp._id);
+                }
+              }
+              
+              return {
+                _id: expenseId ?? `deleted-${exp.description}-${exp.paid_at}`,
+                user_id: exp.user_id,
+                type: exp.type ?? "expense",
+                description: exp.description,
+                price: Number(exp.price ?? 0), // ✅ Lấy price từ backend
+                category: exp.category ?? "none",
+                paid_at: exp.paid_at,
+                created_at: exp.created_at,
+                modified_at: exp.modified_at,
               };
-              deleted.push(placeholder);
-              if (frameId) {
-                knownIds.add(frameId);
+            });
+          } else {
+            // Fallback về cách cũ: fetch từ API hoặc tạo placeholder
+            const deleteFrames =
+              response.doableFrames?.filter((f: any) => f.intent === "delete_expense") ?? [];
+
+            const candidateIds = deleteFrames
+              .map((frame: any) => frame._id)
+              .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
+
+            if (candidateIds.length > 0) {
+              deleted = await fetchExpensesByIds([...new Set(candidateIds)]);
+            }
+
+            // Nếu không có _id, thử fetch bằng description
+            if (deleted.length === 0 && deleteFrames.length > 0) {
+              const frame = deleteFrames[0];
+              if (frame.description) {
+                // Fetch nhiều hơn để tìm đúng giao dịch
+                const fetched = await fetchRecentExpenses(frame.description, 10);
+                // Lọc theo date nếu có
+                if (frame.date) {
+                  const targetDate = frame.date instanceof Date 
+                    ? frame.date.toISOString().split('T')[0]
+                    : frame.date;
+                  const filtered = fetched.filter((exp: any) => {
+                    const expDate = exp.paid_at?.split('T')[0];
+                    return expDate === targetDate;
+                  });
+                  if (filtered.length > 0) {
+                    deleted = filtered.slice(0, response.ret.delete_expense.deletedCount ?? 1);
+                  }
+                } else {
+                  deleted = fetched.slice(0, response.ret.delete_expense.deletedCount ?? 1);
+                }
               }
             }
-          });
+
+            const knownIds = new Set(deleted.map((tx) => tx._id).filter(Boolean) as string[]);
+
+            deleteFrames.forEach((frame: any, index: number) => {
+              const frameId =
+                typeof frame._id === "string" && frame._id.length > 0 ? frame._id : undefined;
+              if (!frameId || !knownIds.has(frameId)) {
+                // ✅ Chỉ tạo placeholder nếu thực sự không tìm thấy
+                const placeholder: ChatExpense = {
+                  _id: frameId ?? `deleted-${index}-${Date.now()}`,
+                  description:
+                    frame.description ?? frame.target_description ?? "Giao dịch đã xóa",
+                  price: Number(frame.price ?? frame.target_price ?? 0) || 0,
+                  category: frame.category ?? "none",
+                  paid_at:
+                    frame.date instanceof Date
+                      ? frame.date.toISOString()
+                      : new Date().toISOString(),
+                  type: "expense",
+                };
+                deleted.push(placeholder);
+                if (frameId) {
+                  knownIds.add(frameId);
+                }
+              }
+            });
+          }
 
           appendUnique(deleted, "delete");
         }
@@ -643,6 +739,8 @@ export default function Chat() {
                     <div className="chat-transaction-panel-inline">
                       {m.transactions.map((transaction) => {
                         const categoryInfo = getCategoryInfo(transaction.category);
+                        // ✅ Tạo unique key cho editingCategory: kết hợp message id và transaction _id
+                        const editingKey = `${m.id}-${transaction._id}`;
                         return (
                           <div
                             key={transaction._id ?? `${transaction.description}-${transaction.paid_at}`}
@@ -677,7 +775,7 @@ export default function Chat() {
                             </div>
 
                             <div className="chat-transaction-footer-inline">
-                              {transaction._id && editingCategory[transaction._id] ? (
+                              {transaction._id && editingCategory[editingKey] ? (
                                 <select
                                   className="chat-transaction-category-select-inline"
                                   value={transaction.category ?? "none"}
@@ -687,7 +785,7 @@ export default function Chat() {
                                   onBlur={() =>
                                     setEditingCategory((prev) => {
                                       const next = { ...prev };
-                                      delete next[transaction._id!];
+                                      delete next[editingKey];
                                       return next;
                                     })
                                   }
@@ -702,13 +800,14 @@ export default function Chat() {
                               ) : (
                                 <div
                                   className="chat-transaction-category-inline"
-                                  onClick={() =>
-                                    transaction._id &&
-                                    setEditingCategory((prev) => ({
-                                      ...prev,
-                                      [transaction._id!]: transaction.category ?? "none",
-                                    }))
-                                  }
+                                  onClick={() => {
+                                    if (transaction._id) {
+                                      setEditingCategory((prev) => ({
+                                        ...prev,
+                                        [editingKey]: transaction.category ?? "none",
+                                      }));
+                                    }
+                                  }}
                                 >
                                   <span className="chat-transaction-category-icon-inline">
                                     {categoryInfo.icon}
@@ -722,12 +821,12 @@ export default function Chat() {
                               {transaction._id && (
                                 <button
                                   className="chat-transaction-edit-btn-inline"
-                                  onClick={() =>
+                                  onClick={() => {
                                     setEditingCategory((prev) => ({
                                       ...prev,
-                                      [transaction._id!]: transaction.category ?? "none",
-                                    }))
-                                  }
+                                      [editingKey]: transaction.category ?? "none",
+                                    }));
+                                  }}
                                   title="Sửa danh mục"
                                 >
                                   ✏️
